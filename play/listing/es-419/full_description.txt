@@ -1,0 +1,23 @@
+¿Tu teléfono no tiene LED de notificaciones? LumiDot lo simula: cuando llega una notificación con la pantalla apagada, muestra un pequeño punto de luz que parpadea sobre una pantalla completamente negra.
+
+En pantallas AMOLED los píxeles negros están apagados, así que sólo se ilumina el punto y la pantalla se usa con el brillo mínimo.
+
+FUNCIONES
+• Se enciende con notificaciones nuevas y se apaga solo cuando las leés o descartás.
+• Elegí color, tamaño, halo y posición del LED (incluso junto a la cámara).
+• Seis patrones de parpadeo: pulso, respiración, parpadeo, doble destello, latido y fijo, con velocidad ajustable.
+• Elegí qué apps encienden el LED y asigná un color a cada una. Con varias apps pendientes, el LED alterna sus colores.
+• Respeta No molestar, ignora notificaciones silenciosas y no se enciende durante llamadas.
+• Horario silencioso, tiempo máximo y límite por batería baja.
+• Protección contra marcas en pantallas AMOLED.
+• Vista previa interactiva para probar todo sin conceder permisos.
+
+PRIVACIDAD
+• Sin publicidad, sin analíticas y sin cuentas.
+• LumiDot no tiene permiso de Internet: nada sale de tu teléfono.
+• No lee ni guarda el texto de tus notificaciones; sólo sabe qué app la envió y si sigue pendiente.
+
+CÓMO FUNCIONA
+LumiDot usa el acceso a notificaciones de Android para saber cuándo llega o se elimina una notificación, y el acceso "Mostrar sobre otras apps", que Android exige para abrir la pantalla del LED con el teléfono bloqueado. Ambos se pueden revocar en cualquier momento.
+
+Nota: Android no permite dibujar con la pantalla totalmente apagada, por eso LumiDot la enciende en negro y al mínimo. Algunos fabricantes cierran apps en segundo plano; si el LED deja de aparecer, quitá la restricción de batería para LumiDot.
