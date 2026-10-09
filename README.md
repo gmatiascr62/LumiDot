@@ -63,7 +63,8 @@ malware y no debe "evadirse".
 
 **Formas legítimas de instalarlo:**
 
-1. **Google Play (recomendado):** publicar en *Prueba interna* de Play Console. Las apps instaladas
+1. **Google Play (recomendado):** publicar en *Prueba interna* de Play Console (guía paso a paso,
+   textos y gráficos en [`play/`](play/README.md); política de privacidad en [`PRIVACY.md`](PRIVACY.md)). Las apps instaladas
    desde Play no están sujetas a este bloqueo. Play exige justificar el uso del acceso a
    notificaciones (función principal: LED de notificaciones) y una política de privacidad.
 2. **ADB** desde una computadora: `adb install LumiDot-debug.apk` (no es una fuente de
@@ -100,6 +101,7 @@ Crear el keystore: `keytool -genkeypair -v -keystore lumidot-release.jks -alias 
 ## Descargar el APK
 
 - Cada push compila en **Actions → Build LumiDot APK → artefacto `LumiDot-apk`**.
+- Con la firma configurada, también se genera **`LumiDot-release.aab`** para subir a Play Console.
 - Cada push a `main` publica/actualiza la pre-release **`latest-build`** en la sección *Releases*
   (descargable desde el teléfono sin iniciar sesión). Los tags `v*` crean una release versionada.
 

@@ -1,0 +1,1 @@
+Un punto de luz en pantalla negra te avisa de notificaciones, como un LED real.

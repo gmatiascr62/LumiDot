@@ -48,7 +48,11 @@ jobs:
           LUMIDOT_KEYSTORE_PASSWORD: ${{ secrets.LUMIDOT_KEYSTORE_PASSWORD }}
           LUMIDOT_KEY_ALIAS: ${{ secrets.LUMIDOT_KEY_ALIAS }}
           LUMIDOT_KEY_PASSWORD: ${{ secrets.LUMIDOT_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease testDebugUnitTest
+        run: |
+          TASKS="assembleDebug assembleRelease testDebugUnitTest"
+          # El AAB (formato que exige Google Play) sólo sirve firmado con la clave de subida.
+          if [ -n "${LUMIDOT_KEYSTORE_FILE:-}" ]; then TASKS="$TASKS bundleRelease"; fi
+          ./gradlew --no-daemon --stacktrace $TASKS
 
       - name: Lint
         continue-on-error: true
@@ -63,12 +67,17 @@ jobs:
           else
             cp app/build/outputs/apk/release/*-release-unsigned.apk out/LumiDot-release-unsigned.apk
           fi
+          if ls app/build/outputs/bundle/release/*.aab > /dev/null 2>&1; then
+            cp app/build/outputs/bundle/release/*.aab out/LumiDot-release.aab
+          fi
           ls -la out
 
       - uses: actions/upload-artifact@v4
         with:
           name: LumiDot-apk
-          path: out/*.apk
+          path: |
+            out/*.apk
+            out/*.aab
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -86,11 +95,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            gh release create "$GITHUB_REF_NAME" out/*.apk --title "LumiDot $GITHUB_REF_NAME" --generate-notes || \
-              gh release upload "$GITHUB_REF_NAME" out/*.apk --clobber
+            gh release create "$GITHUB_REF_NAME" out/* --title "LumiDot $GITHUB_REF_NAME" --generate-notes || \
+              gh release upload "$GITHUB_REF_NAME" out/* --clobber
           else
             gh release delete latest-build --yes --cleanup-tag || true
-            gh release create latest-build out/*.apk --prerelease --target "$GITHUB_SHA" \
+            gh release create latest-build out/* --prerelease --target "$GITHUB_SHA" \
               --title "LumiDot – última compilación (#${GITHUB_RUN_NUMBER})" \
-              --notes "Compilación automática del commit ${GITHUB_SHA::7}. Instalá LumiDot-debug.apk (o LumiDot-release.apk si está firmado)."
+              --notes "Compilación automática del commit ${GITHUB_SHA::7}. LumiDot-release.aab: para subir a Google Play Console. LumiDot-release.apk: instalación directa (firmada). LumiDot-debug.apk: sólo para diagnóstico."
           fi
