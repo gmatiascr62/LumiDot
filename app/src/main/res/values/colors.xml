@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lumi_background">#FF05070B</color>
+    <color name="lumi_icon_bg">#FF000000</color>
+    <color name="lumi_led">#FF00E676</color>
+</resources>

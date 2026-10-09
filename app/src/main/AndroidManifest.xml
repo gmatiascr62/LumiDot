@@ -1,21 +1,77 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:theme="@android:style/Theme.Material.Light.NoActionBar"
-        android:label="LumiDot" android:allowBackup="false">
-        <activity android:name=".MainActivity" android:exported="true">
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        Permisos mínimos. LumiDot NO declara INTERNET: no puede enviar
+        datos ni el contenido de las notificaciones fuera del teléfono.
+    -->
+
+    <!-- Opcional (acceso especial, lo concede el usuario): es la vía oficial
+         para que Android permita mostrar el LED con la pantalla apagada. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Permiso normal: encender la pantalla al mostrar el LED. -->
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
+
+    <!-- Visibilidad de paquetes acotada a apps con ícono en el launcher
+         (evita QUERY_ALL_PACKAGES, que es un permiso restringido en Play). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".LumiDotApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LumiDot"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".DotActivity" android:exported="false"
-            android:showWhenLocked="true" android:excludeFromRecents="true"
-            android:theme="@android:style/Theme.Material.NoActionBar"/>
-        <service android:name=".NotificationWatcher" android:label="LumiDot"
+
+        <!-- Pantalla negra (AMOLED) que dibuja el LED. Se muestra sobre la
+             pantalla de bloqueo sin desbloquear el dispositivo. -->
+        <activity
+            android:name=".led.LedActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
+            android:excludeFromRecents="true"
             android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="false"
+            android:showWhenLocked="true"
+            android:taskAffinity="com.lumidot.app.led"
+            android:theme="@style/Theme.LumiDot.Led"
+            android:turnScreenOn="true" />
+
+        <service
+            android:name=".service.LumiNotificationListener"
+            android:exported="false"
+            android:label="@string/listener_label"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService"/>
+                <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+            <!-- Android 12+: recibir sólo notificaciones que alertan y
+                 conversaciones; las silenciosas y persistentes no llegan. -->
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting" />
         </service>
     </application>
 </manifest>
