@@ -47,6 +47,25 @@ object Permissions {
         context.tryStart(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
     }
 
+    /** Xiaomi, Redmi y POCO (MIUI/HyperOS) tienen permisos propios además de los de Android. */
+    fun isXiaomi(): Boolean =
+        Build.MANUFACTURER.lowercase() in setOf("xiaomi", "redmi", "poco") ||
+            Build.BRAND.lowercase() in setOf("xiaomi", "redmi", "poco")
+
+    /**
+     * Abre "Otros permisos" de MIUI/HyperOS, donde están "Mostrar en pantalla de
+     * bloqueo" y "Abrir ventanas nuevas en segundo plano". Si no existe, abre la
+     * información de la app.
+     */
+    fun openXiaomiPermissions(context: Context) {
+        val editor = Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", context.packageName)
+        val withClass = Intent(editor).setClassName(
+            "com.miui.securitycenter",
+            "com.miui.permcenter.permissions.PermissionsEditorActivity",
+        )
+        if (!context.tryStart(withClass) && !context.tryStart(editor)) openAppDetails(context)
+    }
+
     fun requestRebind(context: Context) {
         try {
             android.service.notification.NotificationListenerService.requestRebind(

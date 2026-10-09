@@ -1,14 +1,18 @@
 package com.lumidot.app.led
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import com.lumidot.app.data.LedSettings
 import com.lumidot.app.service.AlertTracker
+import com.lumidot.app.util.Permissions
 import java.util.Calendar
 
 /**
@@ -39,8 +43,12 @@ object LedController {
     fun blockReason(context: Context, s: LedSettings): String? {
         if (!s.enabled) return "LumiDot está desactivado"
         val pm = context.getSystemService(PowerManager::class.java)
-        // Con la pantalla encendida (y sin el LED en primer plano) el usuario ya ve la notificación.
-        if (pm != null && pm.isInteractive && !ledVisible) return "La pantalla estaba encendida"
+        // Si el teléfono está desbloqueado y en uso, el usuario ya ve la notificación.
+        // Con la pantalla encendida pero bloqueada (algunas capas, como HyperOS, la
+        // encienden al llegar una notificación) el LED sí se muestra.
+        val km = context.getSystemService(KeyguardManager::class.java)
+        val locked = km?.isKeyguardLocked == true
+        if (pm != null && pm.isInteractive && !locked && !ledVisible) return "Estabas usando el teléfono"
         if (!Settings.canDrawOverlays(context)) return "Falta el acceso \"Mostrar sobre otras apps\""
         if (s.skipInCall && isInCall(context)) return "Hay una llamada en curso"
         val cal = Calendar.getInstance()
@@ -66,7 +74,38 @@ object LedController {
             context.startActivity(intent)
         } catch (e: RuntimeException) {
             AlertTracker.setSkipReason("Android bloqueó la apertura del LED")
+            return
         }
+        // Algunas capas (MIUI/HyperOS) descartan el inicio en silencio, sin excepción.
+        if (!preview && !ledVisible) checkLaunched()
+    }
+
+    /**
+     * Prueba del camino real: lanza el LED desde segundo plano a los pocos segundos,
+     * para que el usuario bloquee el teléfono y vea si el sistema lo permite.
+     */
+    fun scheduleLockedTest(context: Context) {
+        val app = context.applicationContext
+        AlertTracker.setSkipReason(null)
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!Settings.canDrawOverlays(app)) {
+                AlertTracker.setSkipReason("Falta el acceso \"Mostrar sobre otras apps\"")
+            } else {
+                launch(app, preview = true)
+                checkLaunched()
+            }
+        }, LOCKED_TEST_DELAY_MS)
+    }
+
+    private fun checkLaunched() {
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!ledVisible) {
+                AlertTracker.setSkipReason(
+                    if (Permissions.isXiaomi()) "HyperOS bloqueó la pantalla del LED. Revisá \"Permisos de Xiaomi\""
+                    else "El sistema no permitió abrir la pantalla del LED"
+                )
+            }
+        }, LAUNCH_CHECK_MS)
     }
 
     private fun isInCall(context: Context): Boolean {
@@ -84,4 +123,7 @@ object LedController {
         if (level < 0 || scale <= 0) return false
         return level * 100 / scale < cutoff
     }
+
+    private const val LAUNCH_CHECK_MS = 3000L
+    private const val LOCKED_TEST_DELAY_MS = 5000L
 }
