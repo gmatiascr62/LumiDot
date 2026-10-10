@@ -172,12 +172,19 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
                     optional = true,
                 ) { Permissions.openXiaomiPermissions(context) }
             }
+            val xiaomi = Permissions.isXiaomi()
             PermissionRow(
-                title = "Sin restricción de batería" + if (Permissions.isXiaomi()) "" else " (opcional)",
+                title = "Sin restricción de batería" + if (xiaomi) "" else " (opcional)",
                 granted = perms.battery,
-                description = "Recomendado en marcas que cierran apps agresivamente (Xiaomi, Samsung, Huawei, etc.).",
+                description = if (xiaomi) {
+                    "Imprescindible en HyperOS: en Información de la app → Ahorro de batería elegí " +
+                        "\"Sin restricciones\" y activá \"Inicio automático\". Si no, con el teléfono quieto " +
+                        "HyperOS pausa LumiDot y las notificaciones le llegan recién al desbloquear."
+                } else {
+                    "Recomendado en marcas que cierran apps agresivamente (Samsung, Huawei, etc.)."
+                },
                 actionLabel = "Abrir",
-                optional = true,
+                optional = !xiaomi,
             ) { Permissions.openBatterySettings(context) }
         }
 
@@ -230,6 +237,8 @@ private fun statusOf(settings: LedSettings, perms: PermState, connected: Boolean
     !perms.notifications -> "Modo prueba: falta el acceso a notificaciones" to LumiWarning
     !connected -> "Conectando con el sistema…" to LumiWarning
     !perms.overlay -> "Detectando notificaciones. Falta \"Mostrar sobre otras apps\" para encender el LED." to LumiWarning
+    Permissions.isXiaomi() && !perms.battery ->
+        "Activo, pero HyperOS puede pausarlo con el teléfono quieto: quitá la restricción de batería." to LumiWarning
     else -> "Activo y esperando notificaciones" to LumiGreen
 }
 
