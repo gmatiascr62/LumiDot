@@ -64,6 +64,15 @@ Si Play Console pide justificar el **acceso a notificaciones**, usá:
 > detectar cuándo se publica o elimina una notificación y encender o apagar un indicador luminoso en
 > pantalla. No lee el contenido de las notificaciones, no las guarda y no tiene permiso de Internet.
 
+Play Console también pide declarar el **servicio en primer plano** (Contenido de la app →
+*Permisos de servicios en primer plano*). Tipo: **Uso especial (specialUse)**. Descripción sugerida:
+
+> LumiDot mantiene un servicio en primer plano opcional, con una notificación silenciosa visible,
+> para que el detector de notificaciones siga activo con la pantalla apagada. Algunos fabricantes
+> congelan las apps en segundo plano y, sin este servicio, el LED virtual no se enciende hasta que
+> el usuario desbloquea el teléfono. El usuario puede desactivarlo en Ajustes. Se puede ver en un
+> video: llega una notificación con la pantalla apagada y LumiDot muestra el LED.
+
 ## 4. Pasar a producción (más adelante)
 
 - Cargá al menos 2 capturas de pantalla del teléfono en la ficha.
