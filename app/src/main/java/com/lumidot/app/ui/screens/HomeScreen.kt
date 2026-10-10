@@ -3,9 +3,6 @@ package com.lumidot.app.ui.screens
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,7 +42,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lumidot.app.data.LedSettings
 import com.lumidot.app.led.LedController
 import com.lumidot.app.service.AlertTracker
-import com.lumidot.app.service.DiagnosticsLog
 import com.lumidot.app.ui.components.Hint
 import com.lumidot.app.ui.components.LedPreview
 import com.lumidot.app.ui.components.SectionCard
@@ -79,7 +75,6 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
     val connected by AlertTracker.listenerConnected.collectAsStateWithLifecycle()
     val alerts by AlertTracker.alerts.collectAsStateWithLifecycle()
     val skipReason by AlertTracker.lastSkipReason.collectAsStateWithLifecycle()
-    val diagnostics by DiagnosticsLog.entries.collectAsStateWithLifecycle()
     var showDisclosure by remember { mutableStateOf(false) }
 
     Column(
@@ -186,31 +181,13 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
             ) { Permissions.openBatterySettings(context) }
         }
 
-        if (perms.notifications && skipReason != null) {
+        // "Estabas usando el teléfono" es el comportamiento normal: no se muestra como aviso.
+        if (perms.notifications && skipReason != null && skipReason != LedController.REASON_IN_USE) {
             SectionCard(title = "Último aviso") {
                 Hint("El LED no se mostró en la última notificación: $skipReason.")
                 if (Permissions.isXiaomi()) {
                     TextButton(onClick = { Permissions.openXiaomiPermissions(context) }) { Text("Abrir permisos de Xiaomi") }
                 }
-            }
-        }
-
-        if (diagnostics.isNotEmpty()) {
-            SectionCard(title = "Diagnóstico") {
-                Hint("Qué hizo LumiDot con las últimas notificaciones (sólo en memoria, sin contenido de mensajes).")
-                val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
-                diagnostics.take(15).forEach { e ->
-                    Row {
-                        Text(
-                            fmt.format(Date(e.time)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 8.dp),
-                        )
-                        Text(e.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                TextButton(onClick = { DiagnosticsLog.clear() }) { Text("Borrar registro") }
             }
         }
 

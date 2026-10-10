@@ -15,7 +15,17 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lumidot.app.service.DiagnosticsLog
+import java.text.SimpleDateFormat
+import java.util.Date
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -142,7 +152,38 @@ fun SettingsScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSetting
             Hint("• Algunos fabricantes cierran apps en segundo plano; si el LED deja de funcionar, quitá la restricción de batería.")
         }
 
+        DiagnosticsSection()
+
         Hint("LumiDot ${BuildConfig.VERSION_NAME}")
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Registro técnico plegado: sólo para revisar problemas si el LED deja de aparecer. */
+@Composable
+private fun DiagnosticsSection() {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val entries by DiagnosticsLog.entries.collectAsStateWithLifecycle()
+    SectionCard(title = "Diagnóstico") {
+        Hint("Registro técnico para revisar problemas. Se guarda sólo en memoria y no incluye el contenido de los mensajes.")
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(if (expanded) "Ocultar registro" else "Ver registro (${entries.size})")
+        }
+        if (expanded) {
+            val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+            if (entries.isEmpty()) Hint("Todavía no hay eventos.")
+            entries.take(20).forEach { e ->
+                Row {
+                    Text(
+                        fmt.format(Date(e.time)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                    Text(e.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (entries.isNotEmpty()) TextButton(onClick = { DiagnosticsLog.clear() }) { Text("Borrar registro") }
+        }
     }
 }
