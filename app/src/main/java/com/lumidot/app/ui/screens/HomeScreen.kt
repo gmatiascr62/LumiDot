@@ -2,6 +2,7 @@ package com.lumidot.app.ui.screens
 
 import android.content.Context
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -121,6 +122,14 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
                 Text("Probar LED en pantalla completa")
             }
             Hint("La prueba funciona sin conceder ningún permiso.")
+            OutlinedButton(
+                onClick = {
+                    LedController.scheduleLockedTest(context)
+                    Toast.makeText(context, "Bloqueá el teléfono ahora: el LED aparece en 5 segundos", Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Probar con pantalla apagada (5 s)") }
+            Hint("Comprueba que Android te deje mostrar el LED con el teléfono bloqueado, como con una notificación real.")
         }
 
         // Accesos
@@ -152,8 +161,19 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
                     "Sin él, el LED no puede aparecer solo con la pantalla apagada.",
                 actionLabel = if (perms.overlay) "Revisar" else "Conceder",
             ) { Permissions.openOverlaySettings(context) }
+            if (Permissions.isXiaomi()) {
+                PermissionRow(
+                    title = "Permisos de Xiaomi (HyperOS)",
+                    granted = false,
+                    description = "En \"Otros permisos\" activá \"Mostrar en pantalla de bloqueo\" y " +
+                        "\"Abrir ventanas nuevas mientras se ejecuta en segundo plano\". Sin ellos HyperOS " +
+                        "bloquea el LED aunque los demás accesos estén concedidos.",
+                    actionLabel = "Abrir",
+                    optional = true,
+                ) { Permissions.openXiaomiPermissions(context) }
+            }
             PermissionRow(
-                title = "Sin restricción de batería (opcional)",
+                title = "Sin restricción de batería" + if (Permissions.isXiaomi()) "" else " (opcional)",
                 granted = perms.battery,
                 description = "Recomendado en marcas que cierran apps agresivamente (Xiaomi, Samsung, Huawei, etc.).",
                 actionLabel = "Abrir",
@@ -164,6 +184,9 @@ fun HomeScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSettings) -
         if (perms.notifications && skipReason != null) {
             SectionCard(title = "Último aviso") {
                 Hint("El LED no se mostró en la última notificación: $skipReason.")
+                if (Permissions.isXiaomi()) {
+                    TextButton(onClick = { Permissions.openXiaomiPermissions(context) }) { Text("Abrir permisos de Xiaomi") }
+                }
             }
         }
 
