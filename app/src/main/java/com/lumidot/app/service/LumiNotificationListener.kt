@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -61,7 +62,8 @@ class LumiNotificationListener : NotificationListenerService() {
         val ranking = rankingMap?.let { map -> Ranking().takeIf { map.getRanking(sbn.key, it) } }
         val importance = ranking?.importance ?: NotificationManager.IMPORTANCE_DEFAULT
         val matchesDnd = ranking?.matchesInterruptionFilter() ?: true
-        scope.launch { handlePosted(sbn, importance, matchesDnd) }
+        val lastAlerted = ranking?.lastAlertedCompat() ?: 0L
+        scope.launch { handlePosted(sbn, importance, matchesDnd, lastAlerted) }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -82,7 +84,12 @@ class LumiNotificationListener : NotificationListenerService() {
         super.onDestroy()
     }
 
-    private suspend fun handlePosted(sbn: StatusBarNotification, importance: Int, matchesDnd: Boolean) {
+    private suspend fun handlePosted(
+        sbn: StatusBarNotification,
+        importance: Int,
+        matchesDnd: Boolean,
+        lastAlerted: Long,
+    ) {
         val settings = lumiSettings.current()
 
         if (sbn.packageName == packageName) return
@@ -103,14 +110,20 @@ class LumiNotificationListener : NotificationListenerService() {
             return
         }
 
-        val isUpdate = AlertTracker.contains(sbn.key)
-        AlertTracker.put(sbn.toAlert(settings))
+        val previous = AlertTracker.get(sbn.key)
+        val alert = sbn.toAlert(settings, lastAlerted)
+        AlertTracker.put(alert)
 
-        // Actualizaciones de una notificación que pidió "alertar sólo una vez"
-        // (progreso, ediciones) no vuelven a encender el LED.
-        if (isUpdate && sbn.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0) {
-            DiagnosticsLog.add("${sbn.packageName}: actualización sin alerta, el LED no cambia")
-            return
+        // Las apps de mensajería (WhatsApp, Telegram...) actualizan la MISMA notificación
+        // con cada mensaje nuevo y la marcan como "alertar sólo una vez". Se considera
+        // novedad si avanzó la hora del contenido o si el sistema volvió a alertar;
+        // si no, es una edición/progreso y el LED no cambia.
+        if (previous != null && sbn.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0) {
+            val newer = alert.whenTime > previous.whenTime || alert.lastAlerted > previous.lastAlerted
+            if (!newer) {
+                DiagnosticsLog.add("${sbn.packageName}: actualización sin contenido nuevo, el LED no cambia")
+                return
+            }
         }
         if (settings.respectDnd && !matchesDnd) {
             AlertTracker.setSkipReason("No molestar está activo")
@@ -139,15 +152,15 @@ class LumiNotificationListener : NotificationListenerService() {
             emptyArray()
         }
         val ranking = currentRankingSafe()
-        val tmp = Ranking()
-        val alerts = active.filter { sbn ->
-            if (!isRelevant(sbn) || sbn.packageName == packageName) return@filter false
-            if (!settings.isAppAllowed(sbn.packageName)) return@filter false
-            if (settings.ignoreSilent && ranking != null && ranking.getRanking(sbn.key, tmp) &&
-                tmp.importance < NotificationManager.IMPORTANCE_DEFAULT
-            ) return@filter false
-            true
-        }.map { it.toAlert(settings) }
+        val alerts = active.mapNotNull { sbn ->
+            if (!isRelevant(sbn) || sbn.packageName == packageName) return@mapNotNull null
+            if (!settings.isAppAllowed(sbn.packageName)) return@mapNotNull null
+            val r = ranking?.let { map -> Ranking().takeIf { map.getRanking(sbn.key, it) } }
+            if (settings.ignoreSilent && r != null && r.importance < NotificationManager.IMPORTANCE_DEFAULT) {
+                return@mapNotNull null
+            }
+            sbn.toAlert(settings, r?.lastAlertedCompat() ?: 0L)
+        }
         AlertTracker.replaceAll(alerts)
     }
 
@@ -157,12 +170,17 @@ class LumiNotificationListener : NotificationListenerService() {
         null
     }
 
-    private fun StatusBarNotification.toAlert(settings: LedSettings) = PendingAlert(
+    private fun StatusBarNotification.toAlert(settings: LedSettings, lastAlerted: Long) = PendingAlert(
         key = key,
         packageName = packageName,
         color = settings.colorFor(packageName),
         postTime = postTime,
+        whenTime = notification?.`when` ?: 0L,
+        lastAlerted = lastAlerted,
     )
+
+    private fun Ranking.lastAlertedCompat(): Long =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) lastAudiblyAlertedMillis else 0L
 
     companion object {
         private const val DEBOUNCE_MS = 2500L
