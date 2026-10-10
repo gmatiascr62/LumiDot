@@ -10,6 +10,10 @@
     <!-- Opcional (acceso especial, lo concede el usuario): es la vía oficial
          para que Android permita mostrar el LED con la pantalla apagada. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Servicio en primer plano opcional: evita que la capa del fabricante congele
+         la app con la pantalla apagada. Muestra una notificación silenciosa. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Permiso normal: encender la pantalla al mostrar el LED. -->
     <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
 
@@ -72,6 +76,15 @@
             <meta-data
                 android:name="android.service.notification.default_filter_types"
                 android:value="conversations|alerting" />
+        </service>
+
+        <service
+            android:name=".service.KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Mantiene activo el detector de notificaciones para mostrar un LED virtual de notificaciones con la pantalla apagada; algunos fabricantes congelan la app en segundo plano." />
         </service>
     </application>
 </manifest>

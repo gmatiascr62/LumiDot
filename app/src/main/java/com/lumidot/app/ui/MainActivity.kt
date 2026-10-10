@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lumidot.app.data.LedSettings
 import com.lumidot.app.lumiSettings
+import com.lumidot.app.service.KeepAliveService
 import com.lumidot.app.ui.screens.AppsScreen
 import com.lumidot.app.ui.screens.HomeScreen
 import com.lumidot.app.ui.screens.LedScreen
@@ -65,6 +66,12 @@ private fun LumiDotRoot() {
     val scope = rememberCoroutineScope()
     val settings by repo.settings.collectAsStateWithLifecycle(initialValue = null)
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    // Con la app en primer plano Android permite iniciar el servicio que la mantiene activa.
+    val keepAlive = settings?.keepAlive
+    androidx.lifecycle.compose.LifecycleResumeEffect(keepAlive) {
+        if (keepAlive != null) KeepAliveService.sync(context, keepAlive)
+        onPauseOrDispose { }
+    }
     val onUpdate: ((LedSettings) -> LedSettings) -> Unit = { transform ->
         scope.launch { repo.update(transform) }
     }

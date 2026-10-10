@@ -47,6 +47,8 @@ data class LedSettings(
     /** Paquetes que alguna vez publicaron notificaciones (sólo el nombre de paquete). */
     val seenPackages: Set<String> = emptySet(),
     val disclosureAccepted: Boolean = false,
+    /** Servicio en primer plano para que la app no sea congelada en segundo plano. */
+    val keepAlive: Boolean = true,
 ) {
     fun isAppAllowed(pkg: String): Boolean {
         val rule = appRules[pkg]

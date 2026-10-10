@@ -38,7 +38,9 @@ class LumiNotificationListener : NotificationListenerService() {
         AlertTracker.setConnected(true)
         DiagnosticsLog.add("Servicio de notificaciones conectado")
         scope.launch {
-            rebuildFromActive(lumiSettings.current())
+            val initial = lumiSettings.current()
+            KeepAliveService.sync(this@LumiNotificationListener, initial.keepAlive)
+            rebuildFromActive(initial)
             // Si cambia la configuración (apps permitidas, colores...), recalcular pendientes.
             lumiSettings.settings.drop(1).collect { rebuildFromActive(it) }
         }
@@ -138,7 +140,9 @@ class LumiNotificationListener : NotificationListenerService() {
             return
         }
         lastTriggerByPackage[sbn.packageName] = now
-        DiagnosticsLog.add("${sbn.packageName}: notificación nueva (${DiagnosticsLog.screenState(this)})")
+        val delaySec = (System.currentTimeMillis() - sbn.postTime) / 1000
+        val delayInfo = if (delaySec >= 5) " · llegó con $delaySec s de retraso" else ""
+        DiagnosticsLog.add("${sbn.packageName}: notificación nueva (${DiagnosticsLog.screenState(this)})$delayInfo")
 
         LedController.onNewAlert(this, settings)
     }

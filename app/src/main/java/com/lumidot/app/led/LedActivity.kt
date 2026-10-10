@@ -205,6 +205,7 @@ class LedActivity : ComponentActivity() {
     private fun applySettings(s: LedSettings) {
         val previous = settings
         settings = s
+        if (previous?.keepAlive != s.keepAlive) com.lumidot.app.service.KeepAliveService.sync(this, s.keepAlive)
         window.attributes = window.attributes.apply { screenBrightness = s.screenBrightness }
         dot.configure(dp(s.sizeDp.toFloat()), s.glow)
         updateColors()

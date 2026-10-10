@@ -40,6 +40,15 @@ fun SettingsScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSetting
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        SectionCard(title = "Funcionamiento en segundo plano") {
+            SettingSwitch(
+                title = "Mantener LumiDot activo",
+                subtitle = "Muestra una notificación silenciosa \"LumiDot activo\". Necesario en Xiaomi/HyperOS " +
+                    "y otras marcas que congelan las apps con la pantalla apagada; sin esto el LED puede no aparecer.",
+                checked = settings.keepAlive,
+            ) { on -> onUpdate { it.copy(keepAlive = on) } }
+        }
+
         SectionCard(title = "Batería y pantalla") {
             Text("Tiempo máximo del LED", style = MaterialTheme.typography.bodyLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
