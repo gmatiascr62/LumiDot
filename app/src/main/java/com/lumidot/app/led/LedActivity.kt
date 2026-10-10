@@ -65,6 +65,12 @@ class LedActivity : ComponentActivity() {
     private val shiftRunnable = object : Runnable {
         override fun run() {
             val s = settings ?: return
+            // Con "sin límite" el LED puede quedar horas encendido: se apaga si la batería baja del mínimo.
+            if (!preview && !expired && s.lowBatteryCutoff > 0 && LedController.isBatteryLow(this@LedActivity, s.lowBatteryCutoff)) {
+                DiagnosticsLog.add("LED apagado: batería por debajo del ${s.lowBatteryCutoff} %")
+                expire()
+                return
+            }
             if (s.burnInShift) {
                 val max = dp(BURN_IN_SHIFT_DP)
                 shiftX = Random.nextFloat() * 2 * max - max
@@ -282,7 +288,7 @@ class LedActivity : ComponentActivity() {
             return
         }
         expired = true
-        DiagnosticsLog.add("LED: se cumplió el tiempo máximo")
+        DiagnosticsLog.add("LED: se apagó el punto (tiempo máximo o batería baja) con notificaciones sin leer")
         animator?.cancel()
         dot.visibility = android.view.View.INVISIBLE
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

@@ -70,7 +70,14 @@ fun SettingsScreen(settings: LedSettings, onUpdate: ((LedSettings) -> LedSetting
                     )
                 }
             }
-            Hint("Pasado este tiempo la pantalla se apaga sola. El LED vuelve con la próxima notificación.")
+            Hint(
+                if (settings.maxDurationMin == 0) {
+                    "El punto sigue parpadeando mientras haya notificaciones sin leer. Con batería baja se apaga solo."
+                } else {
+                    "Pasado este tiempo el punto se apaga y la pantalla se duerme, aunque la notificación siga sin leer. " +
+                        "Vuelve con la próxima notificación. Elegí \"Sin límite\" para que dure mientras haya pendientes."
+                }
+            )
             SettingSlider(
                 title = "Brillo de pantalla",
                 value = settings.screenBrightness * 100f,

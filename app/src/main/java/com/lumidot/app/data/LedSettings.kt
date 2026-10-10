@@ -29,8 +29,8 @@ data class LedSettings(
     val glow: Boolean = true,
     /** Brillo de pantalla mientras se muestra el LED (fracción 0.01..1). */
     val screenBrightness: Float = 0.05f,
-    /** Minutos que el LED mantiene la pantalla activa. 0 = sin límite. */
-    val maxDurationMin: Int = 30,
+    /** Minutos que el LED mantiene la pantalla activa. 0 = sin límite (mientras haya notificaciones pendientes). */
+    val maxDurationMin: Int = 0,
     val burnInShift: Boolean = true,
     val respectDnd: Boolean = true,
     val ignoreSilent: Boolean = true,
