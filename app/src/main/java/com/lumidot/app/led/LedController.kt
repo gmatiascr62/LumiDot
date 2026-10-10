@@ -12,6 +12,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import com.lumidot.app.data.LedSettings
 import com.lumidot.app.service.AlertTracker
+import com.lumidot.app.service.DiagnosticsLog
 import com.lumidot.app.util.Permissions
 import java.util.Calendar
 
@@ -31,12 +32,43 @@ object LedController {
     @Volatile
     var ledVisible: Boolean = false
 
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** Reintento disponible si el sistema apaga la pantalla justo después de mostrar el LED. */
+    @Volatile
+    var retryAvailable: Boolean = false
+        private set
+
+    fun consumeRetry(): Boolean {
+        if (!retryAvailable) return false
+        retryAvailable = false
+        return true
+    }
+
     fun onNewAlert(context: Context, settings: LedSettings) {
         val reason = blockReason(context, settings)
         AlertTracker.setSkipReason(reason)
-        if (reason != null) return
-        // Si el LED ya está visible, el intent llega a onNewIntent y reinicia su temporizador.
-        launch(context, newAlert = true)
+        if (reason != null) {
+            DiagnosticsLog.add("LED no se muestra: $reason")
+            return
+        }
+        retryAvailable = true
+        if (ledVisible) {
+            // El LED ya está visible: el intent llega a onNewIntent y reinicia su temporizador.
+            launch(context, newAlert = true)
+            return
+        }
+        // Esperar un instante: varias capas (HyperOS, One UI) encienden la pantalla o
+        // muestran su propio efecto al llegar la notificación y luego la apagan.
+        val app = context.applicationContext
+        handler.postDelayed({
+            if (AlertTracker.alerts.value.isEmpty()) {
+                DiagnosticsLog.add("LED cancelado: la notificación ya se leyó")
+                return@postDelayed
+            }
+            DiagnosticsLog.add("Abriendo LED (${DiagnosticsLog.screenState(app)})")
+            launch(app, newAlert = true)
+        }, LAUNCH_DELAY_MS)
     }
 
     /** Motivo por el que no se debe mostrar el LED ahora, o null si se puede. */
@@ -74,6 +106,7 @@ object LedController {
             context.startActivity(intent)
         } catch (e: RuntimeException) {
             AlertTracker.setSkipReason("Android bloqueó la apertura del LED")
+            DiagnosticsLog.add("Android rechazó abrir el LED: ${e.javaClass.simpleName}")
             return
         }
         // Algunas capas (MIUI/HyperOS) descartan el inicio en silencio, sin excepción.
@@ -87,7 +120,7 @@ object LedController {
     fun scheduleLockedTest(context: Context) {
         val app = context.applicationContext
         AlertTracker.setSkipReason(null)
-        Handler(Looper.getMainLooper()).postDelayed({
+        handler.postDelayed({
             if (!Settings.canDrawOverlays(app)) {
                 AlertTracker.setSkipReason("Falta el acceso \"Mostrar sobre otras apps\"")
             } else {
@@ -98,8 +131,9 @@ object LedController {
     }
 
     private fun checkLaunched() {
-        Handler(Looper.getMainLooper()).postDelayed({
+        handler.postDelayed({
             if (!ledVisible) {
+                DiagnosticsLog.add("El LED no llegó a verse (bloqueado por el sistema o cerrado enseguida)")
                 AlertTracker.setSkipReason(
                     if (Permissions.isXiaomi()) "HyperOS bloqueó la pantalla del LED. Revisá \"Permisos de Xiaomi\""
                     else "El sistema no permitió abrir la pantalla del LED"
@@ -126,4 +160,5 @@ object LedController {
 
     private const val LAUNCH_CHECK_MS = 3000L
     private const val LOCKED_TEST_DELAY_MS = 5000L
+    private const val LAUNCH_DELAY_MS = 1200L
 }

@@ -35,6 +35,7 @@ class LumiNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         AlertTracker.setConnected(true)
+        DiagnosticsLog.add("Servicio de notificaciones conectado")
         scope.launch {
             rebuildFromActive(lumiSettings.current())
             // Si cambia la configuración (apps permitidas, colores...), recalcular pendientes.
@@ -44,6 +45,7 @@ class LumiNotificationListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         AlertTracker.setConnected(false)
+        DiagnosticsLog.add("Servicio de notificaciones desconectado por el sistema")
         AlertTracker.clear()
         scope.coroutineContext[kotlinx.coroutines.Job]?.children?.forEach { it.cancel() }
         // Pedirle al sistema que vuelva a vincular el servicio (API oficial).
@@ -83,14 +85,20 @@ class LumiNotificationListener : NotificationListenerService() {
     private suspend fun handlePosted(sbn: StatusBarNotification, importance: Int, matchesDnd: Boolean) {
         val settings = lumiSettings.current()
 
-        if (!isRelevant(sbn) || sbn.packageName == packageName) return
+        if (sbn.packageName == packageName) return
+        if (!isRelevant(sbn)) {
+            DiagnosticsLog.add("${sbn.packageName}: ignorada (persistente, de servicio o resumen de grupo)")
+            return
+        }
         if (sbn.packageName !in settings.seenPackages) lumiSettings.recordSeenPackage(sbn.packageName)
 
         if (settings.ignoreSilent && importance < NotificationManager.IMPORTANCE_DEFAULT) {
+            DiagnosticsLog.add("${sbn.packageName}: ignorada (notificación silenciosa)")
             AlertTracker.remove(sbn.key)
             return
         }
         if (!settings.isAppAllowed(sbn.packageName)) {
+            DiagnosticsLog.add("${sbn.packageName}: ignorada (app desactivada en LumiDot)")
             AlertTracker.remove(sbn.key)
             return
         }
@@ -100,16 +108,24 @@ class LumiNotificationListener : NotificationListenerService() {
 
         // Actualizaciones de una notificación que pidió "alertar sólo una vez"
         // (progreso, ediciones) no vuelven a encender el LED.
-        if (isUpdate && sbn.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0) return
+        if (isUpdate && sbn.notification.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0) {
+            DiagnosticsLog.add("${sbn.packageName}: actualización sin alerta, el LED no cambia")
+            return
+        }
         if (settings.respectDnd && !matchesDnd) {
             AlertTracker.setSkipReason("No molestar está activo")
+            DiagnosticsLog.add("${sbn.packageName}: no se muestra (No molestar)")
             return
         }
 
         val now = SystemClock.elapsedRealtime()
         val last = lastTriggerByPackage[sbn.packageName] ?: 0L
-        if (now - last < DEBOUNCE_MS) return
+        if (now - last < DEBOUNCE_MS) {
+            DiagnosticsLog.add("${sbn.packageName}: repetida en menos de ${DEBOUNCE_MS / 1000} s, se agrupa")
+            return
+        }
         lastTriggerByPackage[sbn.packageName] = now
+        DiagnosticsLog.add("${sbn.packageName}: notificación nueva (${DiagnosticsLog.screenState(this)})")
 
         LedController.onNewAlert(this, settings)
     }

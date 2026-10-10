@@ -28,6 +28,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.lumidot.app.data.LedSettings
 import com.lumidot.app.lumiSettings
 import com.lumidot.app.service.AlertTracker
+import com.lumidot.app.service.DiagnosticsLog
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
@@ -57,6 +58,8 @@ class LedActivity : ComponentActivity() {
     private var shiftY = 0f
     private var expired = false
     private var startedAt = 0L
+    private var userClosed = false
+    private var loggedVisible = false
 
     private val expireRunnable = Runnable { expire() }
     private val shiftRunnable = object : Runnable {
@@ -79,7 +82,11 @@ class LedActivity : ComponentActivity() {
 
         root = FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
-            setOnClickListener { finish() }
+            setOnClickListener {
+                userClosed = true
+                if (!preview) DiagnosticsLog.add("LED cerrado: tocaste la pantalla")
+                finish()
+            }
         }
         dot = LedDotView(this)
         root.addView(dot, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT))
@@ -112,6 +119,10 @@ class LedActivity : ComponentActivity() {
         super.onStart()
         startedAt = SystemClock.elapsedRealtime()
         LedController.ledVisible = true
+        if (!preview && !loggedVisible) {
+            loggedVisible = true
+            DiagnosticsLog.add("LED visible (${DiagnosticsLog.screenState(this)})")
+        }
         handler.postDelayed(shiftRunnable, BURN_IN_INTERVAL_MS)
         scheduleExpiry()
         restartAnimation(force = true)
@@ -122,9 +133,30 @@ class LedActivity : ComponentActivity() {
         LedController.ledVisible = false
         handler.removeCallbacksAndMessages(null)
         animator?.cancel()
+        if (isChangingConfigurations || isFinishing) return
+        val shownMs = SystemClock.elapsedRealtime() - startedAt
+        // Se ignora un onStop inmediato que algunos equipos emiten al encender la pantalla.
+        if (shownMs <= 800) return
+        val screenOn = getSystemService(android.os.PowerManager::class.java)?.isInteractive == true
+        if (!preview && !userClosed && !screenOn && shownMs < EARLY_STOP_MS &&
+            AlertTracker.alerts.value.isNotEmpty() && LedController.consumeRetry()
+        ) {
+            // El sistema apagó la pantalla enseguida (efectos de notificación de la capa del
+            // fabricante): se vuelve a mostrar una vez.
+            DiagnosticsLog.add("La pantalla se apagó a los ${shownMs / 1000.0} s; reintentando una vez")
+            finish()
+            val app = applicationContext
+            android.os.Handler(mainLooper).postDelayed({ LedController.launch(app, newAlert = true) }, RETRY_DELAY_MS)
+            return
+        }
         // El usuario apagó la pantalla o salió: el LED se apaga hasta la próxima notificación.
-        // (Se ignora un onStop inmediato que algunos equipos emiten al encender la pantalla.)
-        if (!isChangingConfigurations && SystemClock.elapsedRealtime() - startedAt > 800) finish()
+        if (!preview) {
+            DiagnosticsLog.add(
+                if (screenOn) "LED cerrado: se abrió otra pantalla a los ${shownMs / 1000} s"
+                else "LED cerrado: la pantalla se apagó a los ${shownMs / 1000} s"
+            )
+        }
+        finish()
     }
 
     override fun onDestroy() {
@@ -188,6 +220,7 @@ class LedActivity : ComponentActivity() {
     private fun onAlertsChanged() {
         if (AlertTracker.alerts.value.isEmpty()) {
             // Se leyeron o descartaron todas las notificaciones: apagar el LED.
+            DiagnosticsLog.add("LED apagado: no quedan notificaciones pendientes")
             finish()
             return
         }
@@ -248,6 +281,7 @@ class LedActivity : ComponentActivity() {
             return
         }
         expired = true
+        DiagnosticsLog.add("LED: se cumplió el tiempo máximo")
         animator?.cancel()
         dot.visibility = android.view.View.INVISIBLE
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -287,5 +321,7 @@ class LedActivity : ComponentActivity() {
         private const val BURN_IN_SHIFT_DP = 6f
         private const val BURN_IN_INTERVAL_MS = 60_000L
         private const val PREVIEW_MAX_MS = 60_000L
+        private const val EARLY_STOP_MS = 5_000L
+        private const val RETRY_DELAY_MS = 600L
     }
 }
