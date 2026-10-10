@@ -14,6 +14,10 @@ data class PendingAlert(
     val packageName: String,
     val color: Int,
     val postTime: Long,
+    /** Notification.when: en apps de mensajería, la hora del último mensaje. */
+    val whenTime: Long = 0L,
+    /** Última vez que el sistema alertó (sonido/vibración) con esta notificación; 0 si no se sabe. */
+    val lastAlerted: Long = 0L,
 )
 
 /** Estado en memoria compartido entre el servicio, el LED y la interfaz. */
@@ -29,6 +33,8 @@ object AlertTracker {
     val lastSkipReason: StateFlow<String?> = _lastSkipReason.asStateFlow()
 
     fun contains(key: String) = key in _alerts.value
+
+    fun get(key: String): PendingAlert? = _alerts.value[key]
 
     fun put(alert: PendingAlert) = _alerts.update { it + (alert.key to alert) }
 
