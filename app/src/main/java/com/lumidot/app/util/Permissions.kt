@@ -39,6 +39,12 @@ object Permissions {
 
     /** Lista de optimización de batería (no usa REQUEST_IGNORE_BATTERY_OPTIMIZATIONS). */
     fun openBatterySettings(context: Context) {
+        // En MIUI/HyperOS el ajuste real ("Ahorro de batería → Sin restricciones") está en la
+        // información de la app; la lista genérica de Android no siempre lo refleja.
+        if (isXiaomi()) {
+            openAppDetails(context)
+            return
+        }
         if (!context.tryStart(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) openAppDetails(context)
     }
 
