@@ -75,6 +75,7 @@ class SettingsRepository(context: Context) {
         val appRules = stringPreferencesKey("app_rules")
         val seen = stringSetPreferencesKey("seen_packages")
         val disclosure = booleanPreferencesKey("disclosure_accepted")
+        val keepAlive = booleanPreferencesKey("keep_alive")
     }
 
     private fun Preferences.toSettings(): LedSettings {
@@ -103,6 +104,7 @@ class SettingsRepository(context: Context) {
             appRules = decodeRules(this[Keys.appRules]),
             seenPackages = this[Keys.seen] ?: emptySet(),
             disclosureAccepted = this[Keys.disclosure] ?: false,
+            keepAlive = this[Keys.keepAlive] ?: d.keepAlive,
         )
     }
 
@@ -130,6 +132,7 @@ class SettingsRepository(context: Context) {
         this[Keys.appRules] = encodeRules(s.appRules)
         this[Keys.seen] = s.seenPackages
         this[Keys.disclosure] = s.disclosureAccepted
+        this[Keys.keepAlive] = s.keepAlive
     }
 
     private fun encodeRules(rules: Map<String, AppRule>): String {
