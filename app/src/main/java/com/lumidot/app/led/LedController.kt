@@ -29,6 +29,8 @@ import java.util.Calendar
  */
 object LedController {
 
+    const val REASON_IN_USE = "Estabas usando el teléfono"
+
     @Volatile
     var ledVisible: Boolean = false
 
@@ -80,7 +82,7 @@ object LedController {
         // encienden al llegar una notificación) el LED sí se muestra.
         val km = context.getSystemService(KeyguardManager::class.java)
         val locked = km?.isKeyguardLocked == true
-        if (pm != null && pm.isInteractive && !locked && !ledVisible) return "Estabas usando el teléfono"
+        if (pm != null && pm.isInteractive && !locked && !ledVisible) return REASON_IN_USE
         if (!Settings.canDrawOverlays(context)) return "Falta el acceso \"Mostrar sobre otras apps\""
         if (s.skipInCall && isInCall(context)) return "Hay una llamada en curso"
         val cal = Calendar.getInstance()
