@@ -150,7 +150,7 @@ object LedController {
             am.mode == AudioManager.MODE_RINGTONE
     }
 
-    private fun isBatteryLow(context: Context, cutoff: Int): Boolean {
+    fun isBatteryLow(context: Context, cutoff: Int): Boolean {
         val status = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
         val plugged = status.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
         if (plugged) return false
